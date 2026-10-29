@@ -1,0 +1,13 @@
+{
+  "name": "app-beta",
+  "version": "1.0.0",
+  "description": "Monitored application beta — fires APP_OFFLINE events to Confluent",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@confluentinc/kafka-javascript": "^1.11.0"
+  }
+}

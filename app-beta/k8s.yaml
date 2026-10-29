@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-beta
+  namespace: kroger-remediation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-beta
+  template:
+    metadata:
+      labels:
+        app: app-beta
+    spec:
+      serviceAccountName: bob-runner
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app-beta
+          image: image-registry.openshift-image-registry.svc:5000/kroger-remediation/app-beta:latest
+          ports:
+            - containerPort: 3001
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "3001"
+            - name: KAFKA_BROKERS
+              value: "pkc-921jm.us-east-2.aws.confluent.cloud:9092"
+            - name: KAFKA_APP_EVENTS_TOPIC
+              value: "app-events"
+            - name: KAFKA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: confluent-credentials
+                  key: KAFKA_API_KEY
+            - name: KAFKA_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: confluent-credentials
+                  key: KAFKA_API_SECRET
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-beta
+  namespace: kroger-remediation
+spec:
+  selector:
+    app: app-beta
+  ports:
+    - port: 3001
+      targetPort: 3001
+      protocol: TCP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: app-beta
+  namespace: kroger-remediation
+spec:
+  to:
+    kind: Service
+    name: app-beta
+  port:
+    targetPort: 3001
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
