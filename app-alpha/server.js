@@ -1,4 +1,5 @@
 import http from "node:http";
+import { readFileSync } from "node:fs";
 import { KafkaJS } from "@confluentinc/kafka-javascript";
 
 const APP_NAME  = "app-alpha";
@@ -60,6 +61,25 @@ async function goOffline(producer) {
   }
 }
 
+// ---------- Store lookup page ----------
+
+const PAGES = {
+  "/":       { type: "text/html; charset=utf-8",       body: readFileSync(new URL("./public/index.html", import.meta.url)) },
+  "/app.js": { type: "text/javascript; charset=utf-8", body: readFileSync(new URL("./public/app.js", import.meta.url)) },
+};
+
+const STORES = [
+  { id: "S001", name: "Cincinnati - Main St" },
+  { id: "S002", name: "Columbus - Polaris" },
+  { id: "S003", name: "Louisville - Shelbyville Rd" },
+  { id: "S004", name: "Indianapolis - Keystone" },
+];
+
+const PAGE_HEADERS = {
+  "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline'",
+  "X-Content-Type-Options": "nosniff",
+};
+
 // ---------- HTTP server ----------
 
 const producer = createProducer();
@@ -73,6 +93,18 @@ const server = http.createServer((req, res) => {
       app: APP_NAME,
       timestamp: new Date().toISOString(),
     }));
+    return;
+  }
+
+  if (req.method === "GET" && PAGES[req.url]) {
+    res.writeHead(200, { "Content-Type": PAGES[req.url].type, ...PAGE_HEADERS });
+    res.end(PAGES[req.url].body);
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/api/stores") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ stores: STORES }));
     return;
   }
 

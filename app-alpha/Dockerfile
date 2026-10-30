@@ -6,6 +6,7 @@ COPY --chown=1001:1001 package*.json ./
 RUN npm install --production
 
 COPY --chown=1001:1001 server.js ./
+COPY --chown=1001:1001 public ./public
 
 USER 1001
 
